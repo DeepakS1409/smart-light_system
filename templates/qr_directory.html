@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Pole QR Code Directory & Mobile Testing Guide{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-1"><i class="bi bi-qr-code text-primary me-2"></i>Pole QR Management & Mobile Testing</h4>
+            <p class="text-muted small mb-0">Unique downloadable QR code per light pole encoding direct complaint reporting URLs.</p>
+        </div>
+        <a href="{{ url_for('home') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+    </div>
+
+    <!-- Mobile Testing Advisory Card -->
+    <div class="card border-warning bg-light mb-4">
+        <div class="card-body">
+            <h5 class="fw-bold text-dark"><i class="bi bi-phone-fill text-warning me-2"></i>How to Test QR Scanning with Your Smartphone</h5>
+            <p class="small text-secondary mb-2">
+                When running the Flask dev server locally on your laptop, scanning a QR containing <code>127.0.0.1</code> or <code>localhost</code> from your phone will not work because the phone looks for the server on itself.
+            </p>
+            <div class="row g-2 small">
+                <div class="col-md-4">
+                    <div class="p-2 bg-white rounded border">
+                        <strong>Step 1: Same Wi-Fi Network</strong>
+                        <p class="text-muted mb-0">Connect both your laptop and your smartphone to the same Wi-Fi network.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-2 bg-white rounded border">
+                        <strong>Step 2: Find Laptop LAN IP</strong>
+                        <p class="text-muted mb-0">Open terminal and run <code>ipconfig</code> (Windows). Find your IPv4 address (e.g. <code>192.168.1.45</code>).</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-2 bg-white rounded border">
+                        <strong>Step 3: Update .env & Run on 0.0.0.0</strong>
+                        <p class="text-muted mb-0">Set <code>APP_BASE_URL=http://192.168.1.45:5000</code> and <code>HOST=0.0.0.0</code> in <code>.env</code>.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Poles Grid -->
+    <div class="row g-3">
+        {% for pole in poles %}
+        <div class="col-sm-6 col-md-4 col-lg-3">
+            <div class="card h-100 text-center p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-primary">{{ pole.zone }}</span>
+                    {% if pole.is_high_risk %}
+                        <span class="badge bg-danger">High Risk</span>
+                    {% endif %}
+                </div>
+                <h5 class="fw-bold mb-1">Pole {{ pole.pole_code }}</h5>
+                <p class="text-muted small text-truncate" title="{{ pole.landmark }}">{{ pole.landmark }}</p>
+
+                <div class="my-2">
+                    <img src="{{ url_for('complaint.get_qr', pole_code=pole.pole_code) }}" alt="QR for {{ pole.pole_code }}" class="img-fluid border p-1 rounded" style="max-height: 140px;">
+                </div>
+
+                <div class="mt-auto d-grid gap-1">
+                    <a href="{{ url_for('complaint.new_complaint', pole_code=pole.pole_code) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Open Form
+                    </a>
+                    <a href="{{ url_for('complaint.get_qr', pole_code=pole.pole_code) }}" download="{{ pole.pole_code }}_QR.png" class="btn btn-sm btn-light border">
+                        <i class="bi bi-download me-1"></i> Download QR
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

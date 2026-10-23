@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Login - Smart Street Light System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card p-4">
+                <div class="text-center mb-4">
+                    <div class="display-6 text-primary mb-2">
+                        <i class="bi bi-shield-lock-fill"></i>
+                    </div>
+                    <h4 class="fw-bold mb-1">Staff Portal Login</h4>
+                    <p class="text-muted small">Sign in with role-based credentials</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label fw-semibold">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control" id="username" name="username" required placeholder="Enter username">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label fw-semibold">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-key"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" required placeholder="Enter password">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+                    </button>
+                </form>
+
+                <hr class="my-4">
+
+                <!-- One-Click Demo Role Autofill for Hackathon Judges & Mentors -->
+                <div class="p-3 bg-light rounded-3 border">
+                    <p class="small fw-bold text-secondary mb-2 text-uppercase tracking-wider">
+                        <i class="bi bi-lightning-charge-fill text-warning"></i> Demo Quick Login (Click to populate):
+                    </p>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger text-start d-flex justify-content-between align-items-center" onclick="fillCreds('admin', 'Admin@12345')">
+                            <span><strong>Admin</strong> (Full system control)</span>
+                            <span class="badge bg-danger">admin</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary text-start d-flex justify-content-between align-items-center" onclick="fillCreds('supervisor', 'Super@12345')">
+                            <span><strong>Supervisor</strong> (Zone oversight & dispatch)</span>
+                            <span class="badge bg-primary">supervisor</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success text-start d-flex justify-content-between align-items-center" onclick="fillCreds('worker_raj', 'Worker@12345')">
+                            <span><strong>Technician Raj</strong> (Field repairs & updates)</span>
+                            <span class="badge bg-success">worker</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function fillCreds(u, p) {
+    document.getElementById('username').value = u;
+    document.getElementById('password').value = p;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}IoT Feeder Monitoring Box Simulator{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-danger text-uppercase px-2 py-1 mb-1">
+                <i class="bi bi-cpu-fill me-1"></i> Simulated Telemetry &bull; Demonstration Data
+            </span>
+            <h3 class="fw-bold mb-1">IoT Feeder Substation Monitoring Simulator</h3>
+            <p class="text-muted small mb-0">
+                Simulates real-time voltage and current telemetry from substation feeder boxes (ESP32-ready interface).
+            </p>
+        </div>
+        <div class="text-end">
+            <span class="badge bg-dark p-2">ESP32 Ingestion: <code>/simulator/api/telemetry</code></span>
+        </div>
+    </div>
+
+    <!-- Educational Concept Banner -->
+    <div class="alert alert-info border-info d-flex align-items-start mb-4">
+        <i class="bi bi-info-circle-fill fs-4 me-3 mt-1 text-primary"></i>
+        <div>
+            <strong class="d-block mb-1">Architectural Concept & Feeder Rule:</strong>
+            <p class="mb-1 small">
+                In this hybrid system, <strong>one monitoring box</strong> is installed at the group substation feeder for each entire zone (e.g. Zone A). 
+                It continuously measures aggregate grid supply (Voltage &amp; Current).
+            </p>
+            <p class="mb-0 small text-danger fw-bold">
+                <i class="bi bi-shield-exclamation me-1"></i> Core Rule: Feeder-level telemetry identifies group-wide electrical outages or abnormal electrical supply. It NEVER isolates or claims to identify a specific burnt-out bulb. Individual bulbs are crowd-reported via citizen QR codes.
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- Telemetry Injection Panel -->
+        <div class="col-lg-5">
+            <div class="card p-4 h-100">
+                <h5 class="fw-bold mb-3"><i class="bi bi-sliders text-danger me-2"></i>Inject Sensor Reading</h5>
+
+                <!-- Scenario Presets -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted text-uppercase">One-Click Demonstration Scenarios</label>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-danger btn-sm text-start" onclick="setTelemetry(1, 0, 0)">
+                            <strong><i class="bi bi-lightning-fill me-1"></i> TEST-01: Feeder Blackout (0 V, 0 A)</strong> - Zone A Outage
+                        </button>
+                        <button type="button" class="btn btn-outline-success btn-sm text-start" onclick="setTelemetry(1, 230, 18.5)">
+                            <strong><i class="bi bi-check-circle me-1"></i> Normal Supply (230 V, 18.5 A)</strong> - Optimal Grid
+                        </button>
+                        <button type="button" class="btn btn-outline-warning text-dark btn-sm text-start" onclick="setTelemetry(2, 165, 9.2)">
+                            <strong><i class="bi bi-arrow-down-circle me-1"></i> Under-Voltage (165 V, 9.2 A)</strong> - Zone B Brownout
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm text-start" onclick="setTelemetry(3, 275, 41.0)">
+                            <strong><i class="bi bi-exclamation-octagon me-1"></i> Voltage Surge &amp; Overload (275 V, 41 A)</strong> - Zone C
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Custom Form -->
+                <form method="POST" action="{{ url_for('simulator.inject') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label for="feeder_id" class="form-label fw-semibold">Target Feeder Substation</label>
+                        <select class="form-select" id="feeder_id" name="feeder_id" required>
+                            {% for f in feeders %}
+                                <option value="{{ f.id }}">{{ f.feeder_code }} - {{ f.name }} ({{ f.zone }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label for="voltage" class="form-label fw-semibold">Voltage (Volts)</label>
+                            <input type="number" step="0.1" class="form-control" id="voltage" name="voltage" value="230.0" required>
+                            <span class="form-text small">Normal: 200V - 250V</span>
+                        </div>
+                        <div class="col-6">
+                            <label for="current" class="form-label fw-semibold">Current (Amperes)</label>
+                            <input type="number" step="0.1" class="form-control" id="current" name="current" value="18.0" required>
+                            <span class="form-text small">Normal: 5A - 35A</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100 fw-semibold py-2">
+                        <i class="bi bi-broadcast-pin me-1"></i> Transmit Telemetry to Server
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Active Feeder Group Alerts -->
+        <div class="col-lg-7">
+            <div class="card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Active Feeder Group Alerts
+                    </h5>
+                    <span class="badge bg-danger">{{ active_alerts|length }} Active</span>
+                </div>
+
+                {% if active_alerts %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Alert Code</th>
+                                <th>Zone / Feeder</th>
+                                <th>Type</th>
+                                <th>V / A</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alert in active_alerts %}
+                            <tr>
+                                <td><strong class="text-danger">{{ alert.alert_code }}</strong></td>
+                                <td>{{ alert.zone }} ({{ alert.feeder_code }})</td>
+                                <td><span class="badge bg-danger">{{ alert.alert_type }}</span></td>
+                                <td>{{ alert.voltage }}V / {{ alert.current }}A</td>
+                                <td><span class="badge bg-warning text-dark">{{ alert.status }}</span></td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('simulator.resolve_alert', alert_id=alert.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-success py-0 px-2" title="Mark supply restored">
+                                            Resolve
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="6" class="small text-muted py-1 bg-light">
+                                    <em>{{ alert.description }}</em> &bull; <span class="text-secondary">{{ alert.created_at }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 bg-light rounded text-center my-auto">
+                    <i class="bi bi-shield-check text-success display-6 mb-2"></i>
+                    <h6 class="fw-bold">All Feeder Circuits Nominal</h6>
+                    <p class="text-muted small mb-0">No active group power failures or electrical anomalies detected.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Raw Telemetry Log -->
+    <div class="card p-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-clock-history text-secondary me-2"></i>Recent Ingested Telemetry Evidence Log</h5>
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Feeder Unit</th>
+                        <th>Zone</th>
+                        <th>Voltage</th>
+                        <th>Current</th>
+                        <th>Supply Evaluation</th>
+                        <th>Alert Triggered?</th>
+                        <th>Ingested At</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in recent_readings %}
+                    <tr>
+                        <td>#{{ row.id }}</td>
+                        <td><strong>{{ row.feeder_code }}</strong></td>
+                        <td>{{ row.zone }}</td>
+                        <td>{{ row.voltage }} V</td>
+                        <td>{{ row.current }} A</td>
+                        <td>
+                            {% if row.supply_status == 'NORMAL' %}
+                                <span class="badge bg-success">NORMAL</span>
+                            {% elif row.supply_status == 'FAILURE' %}
+                                <span class="badge bg-danger">POWER FAILURE</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">{{ row.supply_status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.alert_created %}
+                                <span class="text-danger fw-bold"><i class="bi bi-exclamation-circle-fill"></i> YES</span>
+                            {% else %}
+                                <span class="text-muted">NO</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">{{ row.timestamp }}</td>
+                        <td><span class="badge bg-secondary">SIMULATED</span></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-3">No sensor readings recorded yet. Use the panel above to transmit telemetry.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function setTelemetry(feederId, v, a) {
+    document.getElementById('feeder_id').value = feederId;
+    document.getElementById('voltage').value = v;
+    document.getElementById('current').value = a;
+}
+</script>
+{% endblock %}

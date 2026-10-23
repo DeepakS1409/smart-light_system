@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Multi-Stop Dispatch Route Planner{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-signpost-2 text-primary me-2"></i>Multi-Stop Field Dispatch Route Planner</h3>
+            <p class="text-muted small mb-0">
+                Optimizes repair patrol routes using greedy Nearest-Neighbour Euclidean distance traversal.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('dashboard.reports') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Reports
+            </a>
+            {% if route_data.google_maps_multi_url %}
+            <a href="{{ route_data.google_maps_multi_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm fw-semibold">
+                <i class="bi bi-geo-alt-fill text-warning me-1"></i> Open Google Maps Multi-Stop Route
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Algorithm Explanation Banner -->
+    <div class="card p-3 mb-4 bg-light border">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-calculator me-1"></i> Nearest-Neighbour Optimization Model</h6>
+                <p class="small text-muted mb-0">
+                    Calculates the shortest incremental Euclidean distance from the central maintenance depot (Substation Alpha: <code>12.9716, 77.5946</code>) 
+                    through all active uncompleted pole work orders, minimizing technician drive time.
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                <span class="badge bg-dark p-2">Total Tour: <strong>{{ route_data.total_distance_km }} km</strong> ({{ route_data.stops_count or 0 }} Stops)</span>
+            </div>
+        </div>
+    </div>
+
+    {% if route_data.route %}
+    <div class="card p-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-list-ol text-primary me-2"></i>Calculated Waypoint Sequence</h5>
+        
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 70px;">Sequence</th>
+                        <th>Pole Code</th>
+                        <th>Zone</th>
+                        <th>Issue Category</th>
+                        <th>Priority</th>
+                        <th>Leg Distance</th>
+                        <th>Registered Landmark &amp; GPS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-secondary">
+                        <td><span class="badge bg-dark">START</span></td>
+                        <td><strong>DEPOT-01</strong></td>
+                        <td>Zone A</td>
+                        <td colspan="2">Central Maintenance Depot (Substation Alpha)</td>
+                        <td>0.00 km</td>
+                        <td><code>12.97160, 77.59460</code></td>
+                    </tr>
+                    {% for stop in route_data.route %}
+                    <tr>
+                        <td><span class="badge bg-primary fs-6 px-2 py-1">Stop #{{ loop.index }}</span></td>
+                        <td><strong>Pole {{ stop.pole_code }}</strong></td>
+                        <td><span class="badge bg-secondary">{{ stop.zone }}</span></td>
+                        <td>{{ stop.category }}</td>
+                        <td>
+                            {% if stop.priority == 'HIGH' %}
+                                <span class="badge bg-danger">HIGH</span>
+                            {% elif stop.priority == 'MEDIUM' %}
+                                <span class="badge bg-warning text-dark">MEDIUM</span>
+                            {% else %}
+                                <span class="badge bg-info text-dark">LOW</span>
+                            {% endif %}
+                        </td>
+                        <td><strong class="text-primary">+{{ stop.leg_distance_km }} km</strong></td>
+                        <td>
+                            <div class="small fw-semibold">{{ stop.landmark }}</div>
+                            <small class="text-muted"><code>{{ "%.5f"|format(stop.latitude) }}, {{ "%.5f"|format(stop.longitude) }}</code></small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if route_data.google_maps_multi_url %}
+        <div class="mt-4 p-3 bg-light rounded text-center border">
+            <h6 class="fw-bold mb-2">Ready for Field Navigation</h6>
+            <p class="small text-muted mb-3">All {{ route_data.stops_count }} stops are pre-compiled into a sequential Google Maps navigation URL with GPS coordinates.</p>
+            <a href="{{ route_data.google_maps_multi_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary px-4 py-2 fw-semibold">
+                <i class="bi bi-map-fill me-1"></i> Launch Google Maps Navigation
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="card p-5 text-center bg-light">
+        <i class="bi bi-check-circle text-success display-4 mb-3"></i>
+        <h5 class="fw-bold">No Active Work Orders for Route Planning</h5>
+        <p class="text-muted small mb-0">All registered complaints are completed or resolved. No patrol stops needed.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

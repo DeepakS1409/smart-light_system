@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Complaint Submitted - {{ result.reference_no }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card p-4 text-center">
+                <div class="mb-3">
+                    {% if result.is_duplicate %}
+                        <div class="display-5 text-warning"><i class="bi bi-link-45deg"></i></div>
+                        <h3 class="fw-bold text-dark mt-2">Duplicate Report Linked</h3>
+                        <p class="text-muted">An active ticket is already being handled for this pole.</p>
+                    {% else %}
+                        <div class="display-5 text-success"><i class="bi bi-check-circle-fill"></i></div>
+                        <h3 class="fw-bold text-dark mt-2">Complaint Registered Successfully</h3>
+                        <p class="text-muted">Thank you for reporting. Your ticket has been logged into the city dispatch system.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Reference Number Box -->
+                <div class="p-3 bg-light rounded-3 border my-3">
+                    <span class="small text-muted d-block text-uppercase fw-bold">Tracking Reference Number</span>
+                    <h2 class="fw-bold text-primary mb-1 letter-spacing-1">{{ result.reference_no }}</h2>
+                    <small class="text-muted">Save this reference number to check repair progress anytime.</small>
+                </div>
+
+                {% if result.is_duplicate %}
+                <div class="alert alert-warning text-start mb-3">
+                    <h6 class="fw-bold"><i class="bi bi-info-circle-fill me-1"></i> Automated Deduplication Notice</h6>
+                    <p class="mb-1 small">
+                        A work order for <strong>{{ result.category }}</strong> on pole <strong>{{ result.pole.pole_code }}</strong> 
+                        is currently active under primary ticket <strong>{{ result.primary_ticket.reference_no }}</strong> 
+                        (Status: <span class="badge bg-secondary">{{ result.primary_ticket.status }}</span>).
+                    </p>
+                    <p class="mb-0 small text-muted">
+                        To prevent duplicate technician dispatches, your report has been linked to the primary ticket to reinforce priority.
+                    </p>
+                </div>
+                {% endif %}
+
+                <!-- Incident Intelligence Card -->
+                <div class="card bg-white text-start p-3 mb-4 border">
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-cpu-fill text-primary me-1"></i> Automated Dispatch Classification</h6>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="me-2 fw-semibold">Calculated Priority:</span>
+                        {% if result.priority == 'HIGH' %}
+                            <span class="badge bg-danger px-2 py-1 fs-6">HIGH PRIORITY</span>
+                        {% elif result.priority == 'MEDIUM' %}
+                            <span class="badge bg-warning text-dark px-2 py-1 fs-6">MEDIUM PRIORITY</span>
+                        {% else %}
+                            <span class="badge bg-info text-dark px-2 py-1 fs-6">LOW PRIORITY</span>
+                        {% endif %}
+                    </div>
+                    <div class="small text-secondary">
+                        <strong>Rule Reason:</strong> {{ result.priority_reason }}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-center gap-2">
+                    <a href="{{ url_for('complaint.lookup', ref=result.reference_no) }}" class="btn btn-primary">
+                        <i class="bi bi-clock-history me-1"></i> Track Ticket Status
+                    </a>
+                    <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-house me-1"></i> Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Central Operations Dashboard - Smart Street Light System{% endblock %}
+
+{% block extra_head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+    .legend-box {
+        background: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+        font-size: 12px;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+    .legend-icon {
+        width: 14px;
+        height: 14px;
+        margin-right: 8px;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="fw-bold mb-0"><i class="bi bi-speedometer2 text-primary me-2"></i>Municipal Operations Dashboard</h3>
+            <p class="text-muted small mb-0">Centralized dispatch, real-time spatial mapping, and group telemetry monitoring</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('simulator.view') }}" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-cpu me-1"></i> Feeder Simulator
+            </a>
+            <a href="{{ url_for('complaint.new_complaint', pole_code='SL-203') }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-qr-code me-1"></i> Submit Complaint
+            </a>
+        </div>
+    </div>
+
+    <!-- 1. Stats Counter Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">Total Poles</span>
+                        <h2 class="fw-bold mb-0 text-dark">{{ stats.total_poles }}</h2>
+                    </div>
+                    <div class="fs-1 text-primary"><i class="bi bi-lamp"></i></div>
+                </div>
+                <small class="text-muted mt-2 d-block">Registered in Zones A, B, C</small>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card alert-warning p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">Active Complaints</span>
+                        <h2 class="fw-bold mb-0 text-warning">{{ stats.active_complaints }}</h2>
+                    </div>
+                    <div class="fs-1 text-warning"><i class="bi bi-exclamation-circle"></i></div>
+                </div>
+                <small class="text-muted mt-2 d-block">Reported or currently in progress</small>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card alert-high p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">High Priority</span>
+                        <h2 class="fw-bold mb-0 text-danger">{{ stats.high_priority }}</h2>
+                    </div>
+                    <div class="fs-1 text-danger"><i class="bi bi-lightning-charge"></i></div>
+                </div>
+                <small class="text-muted mt-2 d-block">Hazards &amp; {{ stats.active_feeder_alerts }} Feeder Outages</small>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+            <div class="card stat-card alert-success p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">Resolved Repairs</span>
+                        <h2 class="fw-bold mb-0 text-success">{{ stats.resolved_count }}</h2>
+                    </div>
+                    <div class="fs-1 text-success"><i class="bi bi-check2-circle"></i></div>
+                </div>
+                <small class="text-muted mt-2 d-block">Verified work orders completed</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Interactive Map Section -->
+    <div class="card p-3 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+            <div>
+                <h5 class="fw-bold mb-0"><i class="bi bi-map text-primary me-2"></i>Live Spatial Infrastructure Map</h5>
+                <small class="text-muted">Interactive Leaflet visualization &bull; Distinct markers for Feeder Substations vs Pole Complaints &bull; Demonstration Data</small>
+            </div>
+            <!-- Map Legend in Header -->
+            <div class="d-flex flex-wrap gap-3 small pt-1">
+                <span class="d-flex align-items-center"><span class="badge bg-danger me-1">&diams;</span> Feeder Outage</span>
+                <span class="d-flex align-items-center"><span class="badge bg-primary me-1">&diams;</span> Feeder Normal</span>
+                <span class="d-flex align-items-center"><span class="badge bg-danger rounded-circle me-1">&bull;</span> High Priority Pole</span>
+                <span class="d-flex align-items-center"><span class="badge bg-warning text-dark rounded-circle me-1">&bull;</span> Med Priority Pole</span>
+                <span class="d-flex align-items-center"><span class="badge bg-secondary rounded-circle me-1">&bull;</span> Operational Pole</span>
+            </div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <!-- 3. Feeder Group Alerts Box (If Active) -->
+    {% if feeder_alerts %}
+    <div class="card p-3 mb-4 border-danger">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold text-danger mb-0">
+                <i class="bi bi-broadcast text-danger me-2"></i>Substation Feeder Telemetry Alerts (Group Grid Supply)
+            </h6>
+            <span class="badge bg-danger">{{ feeder_alerts|length }} Recorded</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Alert Code</th>
+                        <th>Substation</th>
+                        <th>Zone</th>
+                        <th>Telemetry</th>
+                        <th>Alert Type</th>
+                        <th>Status</th>
+                        <th>Timestamp</th>
+                        <th>Detail Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fa in feeder_alerts %}
+                    <tr class="{% if fa.status == 'Active' %}table-danger{% endif %}">
+                        <td><strong>{{ fa.alert_code }}</strong></td>
+                        <td>{{ fa.feeder_name }} ({{ fa.feeder_code }})</td>
+                        <td>{{ fa.zone }}</td>
+                        <td><code>{{ fa.voltage }}V / {{ fa.current }}A</code></td>
+                        <td><span class="badge bg-danger">{{ fa.alert_type }}</span></td>
+                        <td>
+                            {% if fa.status == 'Active' %}
+                                <span class="badge bg-danger">ACTIVE</span>
+                            {% else %}
+                                <span class="badge bg-secondary">RESOLVED</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">{{ fa.created_at }}</td>
+                        <td class="small text-muted">{{ fa.description }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. Filterable Complaints & Dispatch Management Table -->
+    <div class="card p-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-2 mb-md-0"><i class="bi bi-list-task text-primary me-2"></i>Street Light Fault Tickets &amp; Dispatch Queue</h5>
+            <div class="d-flex flex-wrap gap-2">
+                <input type="text" id="tableSearch" class="form-control form-control-sm" placeholder="Search reference, pole, landmark..." style="max-width: 240px;">
+                <select id="zoneFilter" class="form-select form-select-sm" style="width: auto;">
+                    <option value="">All Zones</option>
+                    <option value="Zone A">Zone A</option>
+                    <option value="Zone B">Zone B</option>
+                    <option value="Zone C">Zone C</option>
+                </select>
+                <select id="statusFilter" class="form-select form-select-sm" style="width: auto;">
+                    <option value="">All Statuses</option>
+                    <option value="Reported">Reported</option>
+                    <option value="Assigned">Assigned</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                </select>
+                <select id="priorityFilter" class="form-select form-select-sm" style="width: auto;">
+                    <option value="">All Priorities</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="LOW">LOW</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle table-sm" id="complaintsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ref Code</th>
+                        <th>Pole</th>
+                        <th>Zone</th>
+                        <th>Category</th>
+                        <th>Priority &amp; Justification</th>
+                        <th>Status</th>
+                        <th>Assigned Worker</th>
+                        <th>Source</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in complaints %}
+                    <tr class="complaint-row" 
+                        data-zone="{{ c.zone }}" 
+                        data-status="{{ c.status }}" 
+                        data-priority="{{ c.priority }}">
+                        <td>
+                            <a href="{{ url_for('complaint.lookup', ref=c.reference_no) }}" class="fw-bold text-decoration-none">
+                                {{ c.reference_no }}
+                            </a>
+                        </td>
+                        <td>
+                            <strong>{{ c.pole_code }}</strong>
+                            {% if c.is_high_risk %}
+                                <i class="bi bi-exclamation-triangle-fill text-danger" title="High Risk Location"></i>
+                            {% endif %}
+                            <div class="small text-muted text-truncate" style="max-width: 140px;">{{ c.landmark }}</div>
+                        </td>
+                        <td><span class="badge bg-secondary">{{ c.zone }}</span></td>
+                        <td>{{ c.category }}</td>
+                        <td>
+                            {% if c.priority == 'HIGH' %}
+                                <span class="badge bg-danger">HIGH</span>
+                            {% elif c.priority == 'MEDIUM' %}
+                                <span class="badge bg-warning text-dark">MEDIUM</span>
+                            {% else %}
+                                <span class="badge bg-info text-dark">LOW</span>
+                            {% endif %}
+                            <div class="extra-small text-muted text-truncate" style="max-width: 180px;" title="{{ c.priority_reason }}">
+                                {{ c.priority_reason }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if c.status == 'Resolved' %}
+                                <span class="badge bg-success">Resolved</span>
+                            {% elif c.status == 'In Progress' %}
+                                <span class="badge bg-warning text-dark">In Progress</span>
+                            {% elif c.status == 'Assigned' %}
+                                <span class="badge bg-primary">Assigned</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Reported</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if c.worker_name %}
+                                <span class="small fw-semibold"><i class="bi bi-person-fill"></i> {{ c.worker_name }}</span>
+                            {% else %}
+                                <span class="small text-muted fst-italic">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if c.is_duplicate %}
+                                <span class="badge bg-warning text-dark" title="Linked to primary {{ c.parent_ref or '' }}">
+                                    <i class="bi bi-link-45deg"></i> Linked Dup
+                                </span>
+                            {% else %}
+                                <span class="badge bg-light text-dark border">
+                                    <i class="bi bi-qr-code"></i> Citizen QR
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <!-- Google Maps Navigate Link -->
+                                <a href="{{ c.google_maps_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary py-0 px-2" title="Navigate to coordinates">
+                                    <i class="bi bi-geo-alt-fill text-warning"></i>
+                                </a>
+
+                                {% if current_user and current_user.role in ['admin', 'supervisor'] and c.status != 'Resolved' %}
+                                <!-- Assign Form -->
+                                <form method="POST" action="{{ url_for('dashboard.assign', complaint_id=c.id) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <select name="worker_id" class="form-select form-select-sm py-0 d-inline-block" style="width: 110px; font-size: 11px;" onchange="this.form.submit()">
+                                        <option value="">Assign...</option>
+                                        {% for w in workers %}
+                                            <option value="{{ w.id }}" {% if c.assigned_worker_id == w.id %}selected{% endif %}>{{ w.full_name.split()[0] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">No complaints recorded. Use the Public Report link to submit a demonstration issue.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div id="tableEmptyMessage" class="text-center text-muted py-3" style="display: none;">
+                No tickets match the selected filters.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

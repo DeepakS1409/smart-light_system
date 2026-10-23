@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Report Street Light Issue - Pole {{ pole.pole_code }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Pole Header Information -->
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-geo-alt-fill me-2"></i> Citizen Fault Report &bull; Pole {{ pole.pole_code }}
+                    </h5>
+                    <span class="badge bg-light text-dark fw-bold">{{ pole.zone }}</span>
+                </div>
+                <div class="card-body bg-light">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block">Registered Landmark</small>
+                            <strong>{{ pole.landmark }}</strong>
+                        </div>
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block">GPS Coordinates</small>
+                            <code>{{ "%.5f"|format(pole.latitude) }}, {{ "%.5f"|format(pole.longitude) }}</code>
+                        </div>
+                        {% if pole.is_high_risk %}
+                        <div class="col-12">
+                            <div class="alert alert-danger py-2 px-3 mb-0 d-flex align-items-center">
+                                <i class="bi bi-exclamation-triangle-fill fs-5 me-2"></i>
+                                <div>
+                                    <strong>Designated Critical Safety Zone:</strong> {{ pole.high_risk_reason }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Complaint Submission Form -->
+            <div class="card p-4">
+                <h5 class="fw-bold mb-3"><i class="bi bi-pencil-square text-primary me-2"></i>Describe the Defect</h5>
+                
+                <form method="POST" action="{{ url_for('complaint.new_complaint', pole_code=pole.pole_code) }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label for="category" class="form-label fw-semibold">Issue Category <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-lg" id="category" name="category" required>
+                            <option value="" disabled selected>-- Select fault category --</option>
+                            <optgroup label="Critical / High Priority">
+                                <option value="Exposed wire / electrical hazard / pole damage">Exposed wire / electrical hazard / pole damage</option>
+                                <option value="Sparking / physical shock hazard">Sparking / physical shock hazard</option>
+                                <option value="Fallen pole / broken arm">Fallen pole / broken arm</option>
+                            </optgroup>
+                            <optgroup label="Standard / Medium Priority">
+                                <option value="Light not working">Light not working (Complete bulb failure)</option>
+                                <option value="Light off during night hours">Light off during night hours</option>
+                            </optgroup>
+                            <optgroup label="Minor / Low Priority">
+                                <option value="Flickering / dim">Flickering / dim illumination</option>
+                                <option value="Glass dirty / casing loose">Glass dirty / casing loose</option>
+                                <option value="Timer desynchronized">Timer desynchronized</option>
+                            </optgroup>
+                        </select>
+                        <div class="form-text">Selecting the correct category allows automated dispatch to prioritize safety hazards immediately.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label fw-semibold">Additional Details (Optional)</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" placeholder="e.g., Light stopped working 2 days ago; pole is right beside the bus stop entrance."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="photo" class="form-label fw-semibold">Attach Photo (Optional)</label>
+                        <input class="form-control" type="file" id="photo" name="photo" accept=".png,.jpg,.jpeg,.webp">
+                        <div class="form-text">Accepted formats: JPG, PNG, WEBP. Max size: 5 MB.</div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg fw-semibold">
+                            <i class="bi bi-send-fill me-1"></i> Submit Fault Report
+                        </button>
+                        <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

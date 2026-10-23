@@ -1,0 +1,109 @@
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --secondary: #64748b;
+    --accent: #f59e0b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --bg-dark: #0f172a;
+    --surface-dark: #1e293b;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.demo-banner {
+    background: linear-gradient(90deg, #1e293b, #334155);
+    color: #f8fafc;
+    font-size: 0.85rem;
+    padding: 0.35rem 1rem;
+    text-align: center;
+    border-bottom: 2px solid #f59e0b;
+    letter-spacing: 0.5px;
+}
+
+.navbar {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.card {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card {
+    border-left: 4px solid var(--primary);
+}
+
+.stat-card.alert-high {
+    border-left-color: var(--danger);
+}
+
+.stat-card.alert-warning {
+    border-left-color: var(--accent);
+}
+
+.stat-card.alert-success {
+    border-left-color: var(--success);
+}
+
+.badge-priority-high {
+    background-color: #fee2e2;
+    color: #991b1b;
+    font-weight: 600;
+}
+
+.badge-priority-medium {
+    background-color: #fef3c7;
+    color: #92400e;
+    font-weight: 600;
+}
+
+.badge-priority-low {
+    background-color: #e0f2fe;
+    color: #075985;
+    font-weight: 600;
+}
+
+.footer {
+    margin-top: auto;
+    background-color: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    padding: 1.5rem 0;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+/* Map Containers */
+#map {
+    height: 520px;
+    width: 100%;
+    border-radius: 8px;
+    z-index: 1;
+}
+
+/* Quick Action Cards */
+.quick-action-icon {
+    font-size: 2.25rem;
+    margin-bottom: 0.75rem;
+}

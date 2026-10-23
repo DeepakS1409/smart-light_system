@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Operational Analytics & Fault Reports{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Municipal Analytics &amp; Performance Reports</h3>
+            <p class="text-muted small mb-0">Audited breakdown of zone faults, resolution velocities, and automated maintenance intelligence</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('dashboard.export_csv') }}" class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Export Official CSV
+            </a>
+            <a href="{{ url_for('dashboard.route_optimizer') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-signpost-2 me-1"></i> Dispatch Route Optimizer
+            </a>
+        </div>
+    </div>
+
+    <!-- Top KPI Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card p-3 stat-card">
+                <span class="text-muted small text-uppercase fw-bold">Average Resolution Velocity</span>
+                <h2 class="fw-bold text-primary mb-0">{{ metrics.avg_resolution_hours }} <span class="fs-6 text-muted">hours</span></h2>
+                <small class="text-muted">Calculated from {{ metrics.resolved_count }} completed work orders</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 stat-card alert-warning">
+                <span class="text-muted small text-uppercase fw-bold">Overdue SLA Breaches (>{{ config.OVERDUE_HOURS_THRESHOLD }}h)</span>
+                <h2 class="fw-bold text-warning mb-0">{{ overdue|length }} <span class="fs-6 text-muted">tickets</span></h2>
+                <small class="text-muted">Requires supervisor priority escalation</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 stat-card alert-high">
+                <span class="text-muted small text-uppercase fw-bold">Recurrent Defect Poles (&ge;{{ config.REPEATED_FAULT_COUNT_THRESHOLD }} in {{ config.REPEATED_FAULT_DAYS }}d)</span>
+                <h2 class="fw-bold text-danger mb-0">{{ repeated|length }} <span class="fs-6 text-muted">locations</span></h2>
+                <small class="text-muted">Flagged for preventive cable/driver overhaul</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js Visualizations -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card p-3 h-100">
+                <h6 class="fw-bold mb-3"><i class="bi bi-pie-chart text-primary me-2"></i>Fault Distribution by Category</h6>
+                <div style="max-height: 280px; position: relative;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card p-3 h-100">
+                <h6 class="fw-bold mb-3"><i class="bi bi-bar-chart text-success me-2"></i>Reported Defect Volume by Zone</h6>
+                <div style="max-height: 280px; position: relative;">
+                    <canvas id="zoneChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Incident Recommendations Engine (Rule-Based, Non-ML) -->
+    <div class="card p-4 mb-4 border-primary">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="fw-bold text-primary mb-0">
+                <i class="bi bi-lightbulb-fill text-warning me-2"></i>Rule-Based Preventative Maintenance Recommendations
+            </h5>
+            <span class="badge bg-secondary">System Advisory &bull; Human-in-the-Loop</span>
+        </div>
+        <p class="text-muted small mb-3">
+            Algorithmic recommendations automatically generated based on historical recurrence and SLA thresholds. Recommendations stay strictly separate from human approval.
+        </p>
+
+        {% if recommendations %}
+        <div class="row g-3">
+            {% for r in recommendations %}
+            <div class="col-md-4">
+                <div class="p-3 bg-light rounded border-start border-4 {% if r.level == 'CRITICAL' %}border-danger{% elif r.level == 'DANGER' %}border-warning{% else %}border-info{% endif %} h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="badge {% if r.level == 'CRITICAL' %}bg-danger{% elif r.level == 'DANGER' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+                            {{ r.type }}
+                        </span>
+                        <span class="small text-muted">{{ r.zone }}</span>
+                    </div>
+                    <h6 class="fw-bold mb-1 text-dark">{{ r.title }}</h6>
+                    <p class="small text-secondary mb-0">{{ r.description }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-success py-2 mb-0 small">
+            <i class="bi bi-check-circle me-1"></i> No critical maintenance warnings. All zones and poles operating within normal failure rates.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Repeated Faults & Overdue Tables -->
+    <div class="row g-4">
+        <!-- Repeated Faults Table -->
+        <div class="col-lg-6">
+            <div class="card p-3 h-100">
+                <h6 class="fw-bold text-danger mb-2">
+                    <i class="bi bi-arrow-repeat me-1"></i>Poles with Chronic Failures (&ge;{{ config.REPEATED_FAULT_COUNT_THRESHOLD }} Breaches)
+                </h6>
+                {% if repeated %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Pole Code</th>
+                                <th>Zone</th>
+                                <th>Landmark</th>
+                                <th>Incidents (30d)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in repeated %}
+                            <tr>
+                                <td><strong>{{ p.pole_code }}</strong></td>
+                                <td>{{ p.zone }}</td>
+                                <td class="small">{{ p.landmark }}</td>
+                                <td><span class="badge bg-danger">{{ p.fault_count }} Failures</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted small my-auto">No poles have triggered the recurrent failure threshold.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Overdue SLA Table -->
+        <div class="col-lg-6">
+            <div class="card p-3 h-100">
+                <h6 class="fw-bold text-warning mb-2">
+                    <i class="bi bi-hourglass-bottom me-1"></i>Overdue Unresolved Complaints (>{{ config.OVERDUE_HOURS_THRESHOLD }}h)
+                </h6>
+                {% if overdue %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ref No</th>
+                                <th>Pole</th>
+                                <th>Category</th>
+                                <th>Reported</th>
+                                <th>Assignee</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for o in overdue %}
+                            <tr>
+                                <td><a href="{{ url_for('complaint.lookup', ref=o.reference_no) }}">{{ o.reference_no }}</a></td>
+                                <td>{{ o.pole_code }}</td>
+                                <td class="small">{{ o.category }}</td>
+                                <td class="small text-muted">{{ o.reported_at }}</td>
+                                <td class="small">{{ o.worker_name or 'Unassigned' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted small my-auto">All active complaints are currently within the {{ config.OVERDUE_HOURS_THRESHOLD }}-hour resolution SLA window.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // 1. Category Distribution Chart
+    const catLabels = {{ metrics.by_category | map(attribute='category') | list | tojson }};
+    const catCounts = {{ metrics.by_category | map(attribute='count') | list | tojson }};
+
+    const ctxCat = document.getElementById('categoryChart');
+    if (ctxCat && catLabels.length > 0) {
+        new Chart(ctxCat, {
+            type: 'doughnut',
+            data: {
+                labels: catLabels,
+                datasets: [{
+                    data: catCounts,
+                    backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#64748b']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+            }
+        });
+    }
+
+    // 2. Zone Distribution Chart
+    const zoneLabels = {{ metrics.by_zone | map(attribute='zone') | list | tojson }};
+    const zoneCounts = {{ metrics.by_zone | map(attribute='count') | list | tojson }};
+
+    const ctxZone = document.getElementById('zoneChart');
+    if (ctxZone && zoneLabels.length > 0) {
+        new Chart(ctxZone, {
+            type: 'bar',
+            data: {
+                labels: zoneLabels,
+                datasets: [{
+                    label: 'Fault Tickets',
+                    data: zoneCounts,
+                    backgroundColor: '#2563eb',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

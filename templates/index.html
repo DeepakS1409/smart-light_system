@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Hybrid Smart Street Light System - Overview{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Hero Banner -->
+    <div class="p-5 mb-4 bg-light rounded-4 border shadow-sm">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <span class="badge bg-primary mb-2 px-3 py-2 text-uppercase">IoT &bull; Smart City &bull; Public Service</span>
+                <h1 class="display-6 fw-bold mb-3">Hybrid Smart Street Light Fault Monitoring & Dispatch</h1>
+                <p class="lead text-secondary mb-4">
+                    Eliminating the multi-million dollar cost of per-pole cellular sensors by pairing 
+                    <strong>1 Feeder Monitoring Box per zone</strong> for electrical blackouts with 
+                    <strong>Citizen QR reporting</strong> for individual bulb burnouts and physical hazards.
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ url_for('complaint.new_complaint', pole_code='SL-203') }}" class="btn btn-warning px-4 py-2 fw-semibold">
+                        <i class="bi bi-qr-code me-1"></i> Scan Pole SL-203 (Demo)
+                    </a>
+                    <a href="{{ url_for('simulator.view') }}" class="btn btn-outline-dark px-4 py-2">
+                        <i class="bi bi-cpu me-1"></i> Launch Feeder Simulator
+                    </a>
+                    <a href="{{ url_for('dashboard.view') }}" class="btn btn-primary px-4 py-2">
+                        <i class="bi bi-speedometer2 me-1"></i> Open Dashboard
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-4 text-center mt-4 mt-lg-0">
+                <div class="p-4 bg-white rounded-3 border text-start">
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-shield-check text-success me-1"></i> System Principles</h6>
+                    <ul class="list-unstyled small text-muted mb-0">
+                        <li class="mb-2">&bull; <strong>Group Detection:</strong> Identifies feeder trips, zero-voltage, surges across entire circuit lines.</li>
+                        <li class="mb-2">&bull; <strong>No False Claims:</strong> Feeder box never falsely claims to identify an isolated failed bulb.</li>
+                        <li class="mb-2">&bull; <strong>Instant Geo-Dispatch:</strong> QR reports pre-fill exact pole GPS coordinates & landmark for workers.</li>
+                        <li>&bull; <strong>Deduplication Engine:</strong> Active duplicate reports on the same pole are automatically linked.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Navigation Grid -->
+    <h4 class="fw-bold mb-3"><i class="bi bi-grid-fill text-primary me-2"></i>Module Workflows</h4>
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card h-100 p-3">
+                <div class="text-primary quick-action-icon"><i class="bi bi-qr-code-scan"></i></div>
+                <h5 class="fw-bold">1. Public Citizen QR Portal</h5>
+                <p class="text-muted small">Citizens scan the pole QR to report faults (e.g., SL-203), upload photos, and receive a tracking reference code.</p>
+                <a href="{{ url_for('complaint.new_complaint', pole_code='SL-203') }}" class="btn btn-outline-primary btn-sm mt-auto">Simulate QR Scan (SL-203) &rarr;</a>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 p-3">
+                <div class="text-danger quick-action-icon"><i class="bi bi-broadcast"></i></div>
+                <h5 class="fw-bold">2. Feeder IoT Simulator</h5>
+                <p class="text-muted small">Inject live voltage/current readings into Zone A/B/C substations. Triggers automatic HIGH priority feeder alerts upon power loss.</p>
+                <a href="{{ url_for('simulator.view') }}" class="btn btn-outline-danger btn-sm mt-auto">Open IoT Simulator &rarr;</a>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 p-3">
+                <div class="text-dark quick-action-icon"><i class="bi bi-map-fill"></i></div>
+                <h5 class="fw-bold">3. Central Ops Dashboard</h5>
+                <p class="text-muted small">Map view separating feeder zone alerts from pole complaints, status progression, technician assignment, and duplicate links.</p>
+                <a href="{{ url_for('dashboard.view') }}" class="btn btn-outline-dark btn-sm mt-auto">View Admin Dashboard &rarr;</a>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 p-3">
+                <div class="text-success quick-action-icon"><i class="bi bi-cone-striped"></i></div>
+                <h5 class="fw-bold">4. Field Worker Dispatch</h5>
+                <p class="text-muted small">Technicians view assigned tasks, click Google Maps GPS navigation links, update repair progression, and attach resolution notes.</p>
+                <a href="{{ url_for('worker.tasks') }}" class="btn btn-outline-success btn-sm mt-auto">Worker Interface &rarr;</a>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 p-3">
+                <div class="text-info quick-action-icon"><i class="bi bi-file-earmark-bar-graph"></i></div>
+                <h5 class="fw-bold">5. Reports & Route Optimizer</h5>
+                <p class="text-muted small">Summary metrics, repeated fault detection, CSV export, and simple nearest-neighbour dispatch route suggestions.</p>
+                <a href="{{ url_for('dashboard.reports') }}" class="btn btn-outline-info btn-sm mt-auto">View Analytics & Reports &rarr;</a>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 p-3">
+                <div class="text-secondary quick-action-icon"><i class="bi bi-card-checklist"></i></div>
+                <h5 class="fw-bold">6. Citizen Ticket Tracker</h5>
+                <p class="text-muted small">Enter reference code (e.g. REF-XXXXXXXX) to track live status from Reported &rarr; Assigned &rarr; In Progress &rarr; Resolved.</p>
+                <a href="{{ url_for('complaint.lookup') }}" class="btn btn-outline-secondary btn-sm mt-auto">Track Complaint &rarr;</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

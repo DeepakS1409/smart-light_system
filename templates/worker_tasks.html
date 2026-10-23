@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Technician Work Orders & Navigation{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-tools text-primary me-2"></i>Field Technician Work Orders</h3>
+            <p class="text-muted small mb-0">
+                Logged in as <strong>{{ user.full_name }}</strong> ({{ user.role|capitalize }}) &bull; Active dispatch queue
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            {% if user.role in ['admin', 'supervisor'] %}
+            <form method="GET" action="{{ url_for('worker.tasks') }}" class="d-flex gap-2">
+                <select name="worker_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">-- All Technicians --</option>
+                    {% for w in workers %}
+                        <option value="{{ w.id }}" {% if request.args.get('worker_id')|int == w.id %}selected{% endif %}>
+                            {{ w.full_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('dashboard.view') }}" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-speedometer2 me-1"></i> Admin Dashboard
+            </a>
+        </div>
+    </div>
+
+    {% if tasks %}
+    <div class="row g-4">
+        {% for task in tasks %}
+        <div class="col-lg-6">
+            <div class="card h-100 p-4 border-start border-4 {% if task.priority == 'HIGH' %}border-danger{% elif task.priority == 'MEDIUM' %}border-warning{% else %}border-info{% endif %}">
+                <!-- Card Header -->
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <span class="badge bg-secondary mb-1">Pole {{ task.pole_code }} ({{ task.zone }})</span>
+                        <h5 class="fw-bold text-primary mb-0">{{ task.reference_no }}</h5>
+                    </div>
+                    <div class="text-end">
+                        {% if task.priority == 'HIGH' %}
+                            <span class="badge bg-danger">HIGH PRIORITY</span>
+                        {% elif task.priority == 'MEDIUM' %}
+                            <span class="badge bg-warning text-dark">MEDIUM PRIORITY</span>
+                        {% else %}
+                            <span class="badge bg-info text-dark">LOW PRIORITY</span>
+                        {% endif %}
+                        <div class="mt-1">
+                            <span class="badge bg-dark">{{ task.status }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fault Details -->
+                <div class="bg-light p-3 rounded-3 mb-3 small">
+                    <div class="mb-1"><strong>Fault:</strong> {{ task.category }}</div>
+                    {% if task.description %}
+                        <div class="mb-1 text-muted"><strong>Citizen Note:</strong> {{ task.description }}</div>
+                    {% endif %}
+                    <div class="mb-2"><strong>Landmark:</strong> {{ task.landmark }}</div>
+                    <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+                        <code>GPS: {{ "%.5f"|format(task.latitude) }}, {{ "%.5f"|format(task.longitude) }}</code>
+                        <!-- Official Google Maps Navigation Link using exact coordinates -->
+                        <a href="{{ task.google_maps_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">
+                            <i class="bi bi-geo-alt-fill text-warning me-1"></i> Navigate via Google Maps
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Existing Repair Notes -->
+                {% if task.notes %}
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted text-uppercase mb-1">Field Work Log</label>
+                    <div class="p-2 bg-white border rounded small">
+                        {% for n in task.notes %}
+                        <div class="pb-1 mb-1 border-bottom">
+                            <strong>{{ n.author }}:</strong> {{ n.note }}
+                            <div class="text-muted extra-small">{{ n.timestamp }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Actions: Update Status & Add Notes -->
+                <div class="mt-auto pt-3 border-top">
+                    <form method="POST" action="{{ url_for('worker.change_status', complaint_id=task.id) }}" class="mb-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="input-group input-group-sm">
+                            <label class="input-group-text bg-light fw-semibold">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="Assigned" {% if task.status == 'Assigned' %}selected{% endif %}>Assigned</option>
+                                <option value="In Progress" {% if task.status == 'In Progress' %}selected{% endif %}>In Progress (On Site)</option>
+                                <option value="Resolved" {% if task.status == 'Resolved' %}selected{% endif %}>Resolved (Repaired)</option>
+                            </select>
+                            <input type="text" name="notes" class="form-control" placeholder="Optional audit note...">
+                            <button type="submit" class="btn btn-outline-primary">Update</button>
+                        </div>
+                    </form>
+
+                    <!-- Add Repair Note Form -->
+                    <form method="POST" action="{{ url_for('worker.submit_note', complaint_id=task.id) }}" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="note" class="form-control" placeholder="Add repair note (e.g. Replaced 70W LED driver)..." required>
+                            <button type="submit" class="btn btn-outline-success">
+                                <i class="bi bi-plus-circle me-1"></i> Add Log
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card p-5 text-center bg-light">
+        <i class="bi bi-clipboard-check text-success display-4 mb-3"></i>
+        <h5 class="fw-bold">No Active Work Orders</h5>
+        <p class="text-muted small mb-3">There are currently no assigned complaints in this technician queue.</p>
+        <div>
+            <a href="{{ url_for('complaint.new_complaint', pole_code='SL-203') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-qr-code me-1"></i> Submit Demo Complaint on SL-203
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
