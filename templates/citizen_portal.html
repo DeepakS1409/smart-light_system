@@ -7,7 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js" integrity="sha512-r6rDA3W6ZeQhvl8S7RVQUSzAOpjAbG60R8yQWOf63gk5TQZA5TUANYoMXCjcmhXHD4LBIfHKDUVe2ZIuZvJWHA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
     .scanner-container {
-        max-width: 500px;
+        max-width: 520px;
         margin: 0 auto;
     }
     #qr-reader {
@@ -15,26 +15,12 @@
         border: none !important;
         border-radius: 12px;
         overflow: hidden;
-    }
-    #qr-reader__scan_region {
-        background: #0f172a !important;
-    }
-    .scan-target-box {
-        position: relative;
         background: #0f172a;
-        color: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
     }
-    .pulse-laser {
-        border-bottom: 2px solid #ef4444;
-        box-shadow: 0 0 12px #ef4444;
-        animation: scanLine 2s infinite alternate ease-in-out;
-    }
-    @keyframes scanLine {
-        from { transform: translateY(0); }
-        to { transform: translateY(180px); }
+    #qr-reader video {
+        border-radius: 12px;
+        max-height: 340px;
+        object-fit: cover;
     }
 </style>
 {% endblock %}
@@ -48,21 +34,32 @@
                 <i class="bi bi-people-fill me-1"></i> Public Citizen Portal
             </span>
             <h3 class="fw-bold mb-1">Scan Street Light QR Code</h3>
-            <p class="text-muted small">Point your camera at the QR code on any municipal light pole to register a fault instantly.</p>
+            <p class="text-muted small">Point your camera or upload a photo of the light pole's QR sticker to submit an immediate repair request.</p>
+        </div>
+
+        <!-- Insecure Context / Permission Advisory Banner (Auto-detected) -->
+        <div id="securityAdvisory" class="alert alert-warning small d-none mb-3">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-shield-exclamation fs-5 me-2 text-warning"></i>
+                <div>
+                    <strong>Camera Security Notice:</strong>
+                    <div id="securityAdvisoryText">Browsers require HTTPS or <code>localhost</code> to open the live camera feed. You can use the "Snap / Upload Photo" tab below, which works on all devices and networks!</div>
+                </div>
+            </div>
         </div>
 
         <!-- Scanner Card -->
         <div class="card p-3 border-0 shadow-sm mb-4">
-            <!-- Navigation Tabs: Live Camera vs Upload Photo vs Manual Code -->
+            <!-- Navigation Tabs -->
             <ul class="nav nav-pills nav-fill mb-3" id="scanTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active fw-semibold" id="camera-tab" data-bs-toggle="tab" data-bs-target="#cameraPane" type="button" role="tab">
-                        <i class="bi bi-camera-fill me-1"></i> Live Camera
+                        <i class="bi bi-camera-video-fill me-1"></i> Live Camera
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link fw-semibold" id="upload-tab" data-bs-toggle="tab" data-bs-target="#uploadPane" type="button" role="tab">
-                        <i class="bi bi-image me-1"></i> Upload Image
+                        <i class="bi bi-camera-fill me-1"></i> Snap / Upload
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -73,43 +70,72 @@
             </ul>
 
             <div class="tab-content" id="scanTabsContent">
-                <!-- Tab 1: Live Camera Scanner -->
+                <!-- Tab 1: Live Video Camera Feed -->
                 <div class="tab-pane fade show active" id="cameraPane" role="tabpanel">
-                    <div id="qr-reader" class="mb-3"></div>
+                    <!-- Camera selector dropdown (visible when multiple cameras exist) -->
+                    <div id="cameraSelectDiv" class="mb-2 d-none">
+                        <select id="cameraSelect" class="form-select form-select-sm"></select>
+                    </div>
+
+                    <div id="qr-reader" class="mb-3 text-center text-white p-3 rounded">
+                        <div id="cameraPlaceholder" class="py-4">
+                            <i class="bi bi-camera-fill display-4 text-muted mb-2 d-block"></i>
+                            <span class="text-secondary small">Camera is idle. Click "Open Camera" below.</span>
+                        </div>
+                    </div>
                     
                     <div id="scannerControls" class="text-center">
                         <button id="startScanBtn" class="btn btn-primary w-100 py-2 fw-semibold">
-                            <i class="bi bi-qr-code-scan me-1"></i> Start Camera Scanner
+                            <i class="bi bi-play-circle-fill me-1"></i> Open Camera &amp; Start Scanning
                         </button>
                         <button id="stopScanBtn" class="btn btn-outline-danger w-100 py-2 fw-semibold d-none mt-2">
                             <i class="bi bi-stop-circle me-1"></i> Stop Camera
                         </button>
                     </div>
 
+                    <!-- Live Scanning Feedback -->
                     <div id="scanStatus" class="alert alert-secondary py-2 small text-center mt-3 d-none">
                         <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                        Scanning for street light QR code...
+                        <span id="scanStatusText">Align the QR code within the camera frame...</span>
+                    </div>
+
+                    <!-- Error Alert Box -->
+                    <div id="cameraErrorBox" class="alert alert-danger py-2 small mt-3 d-none">
+                        <strong class="d-block mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> Camera could not be opened:</strong>
+                        <span id="cameraErrorMessage">Please check browser permissions.</span>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="switchToUploadTab()">
+                                <i class="bi bi-camera me-1"></i> Use Phone Camera Snapshot Instead
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Tab 2: Upload QR Image File -->
+                <!-- Tab 2: Native Phone Camera Snapshot / Image Upload -->
                 <div class="tab-pane fade" id="uploadPane" role="tabpanel">
-                    <div class="p-3 bg-light rounded-3 text-center border">
-                        <i class="bi bi-cloud-arrow-up-fill text-primary display-5 mb-2"></i>
-                        <h6 class="fw-bold mb-1">Select a QR Code Photo</h6>
-                        <p class="text-muted extra-small mb-3">If camera permissions are blocked, upload a saved photo of the light pole QR.</p>
-                        <input type="file" id="qrFileInput" class="form-control" accept="image/*">
+                    <div class="p-4 bg-light rounded-3 text-center border">
+                        <i class="bi bi-phone-fill text-primary display-5 mb-2 d-block"></i>
+                        <h6 class="fw-bold mb-1">Instant Phone Camera Snapshot</h6>
+                        <p class="text-muted extra-small mb-3">
+                            Works on <strong>100% of smartphones and browsers</strong> even over local Wi-Fi or when camera permissions are restricted.
+                        </p>
+                        
+                        <label for="qrFileInput" class="btn btn-primary px-4 py-2 fw-semibold mb-2">
+                            <i class="bi bi-camera-fill me-1"></i> Take Photo of QR / Choose Image
+                        </label>
+                        <!-- capture="environment" forces smartphone to open its native rear camera -->
+                        <input type="file" id="qrFileInput" class="d-none" accept="image/*" capture="environment">
                     </div>
-                    <div id="fileScanFeedback" class="mt-2 text-center small text-muted"></div>
+                    <div id="fileScanFeedback" class="mt-3 text-center small text-muted"></div>
                 </div>
 
-                <!-- Tab 3: Manual Pole Code Entry Fallback -->
+                <!-- Tab 3: Manual Pole Code Entry -->
                 <div class="tab-pane fade" id="manualPane" role="tabpanel">
                     <div class="p-2">
-                        <label for="manualPoleCode" class="form-label small fw-semibold">Enter Printed Pole ID (e.g. SL-203)</label>
+                        <label for="manualPoleCode" class="form-label small fw-semibold">Enter Printed Pole Code (e.g. SL-203)</label>
                         <div class="input-group mb-3">
                             <span class="input-group-text"><i class="bi bi-lamp"></i></span>
-                            <input type="text" class="form-control text-uppercase" id="manualPoleCode" placeholder="SL-203">
+                            <input type="text" class="form-control text-uppercase" id="manualPoleCode" placeholder="SL-203" value="SL-203">
                             <button class="btn btn-primary fw-semibold" type="button" onclick="goToManualPole()">
                                 Go to Form &rarr;
                             </button>
@@ -117,7 +143,7 @@
 
                         <!-- One-Click Quick Demo Chips -->
                         <div class="pt-2">
-                            <span class="text-muted extra-small text-uppercase fw-bold d-block mb-2">Or choose a demonstration pole:</span>
+                            <span class="text-muted extra-small text-uppercase fw-bold d-block mb-2">One-Click Demonstration Poles:</span>
                             <div class="d-flex flex-wrap gap-2">
                                 {% for p in sample_poles %}
                                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectPole('{{ p.pole_code }}')">
@@ -132,12 +158,12 @@
         </div>
 
         <!-- Scan Success Modal / Card (Hidden until scan) -->
-        <div id="scanResultCard" class="card border-success p-3 text-center bg-light d-none mb-4">
-            <i class="bi bi-check-circle-fill text-success fs-3 mb-1"></i>
-            <h6 class="fw-bold text-dark mb-1">QR Code Detected!</h6>
-            <p class="small text-muted mb-2" id="scanResultText">Redirecting to fault registration form...</p>
-            <a id="scanRedirectBtn" href="#" class="btn btn-success btn-sm w-100 fw-semibold">
-                Continue to Complaint Form &rarr;
+        <div id="scanResultCard" class="card border-success p-3 text-center bg-light d-none mb-4 shadow-sm">
+            <i class="bi bi-check-circle-fill text-success fs-2 mb-1"></i>
+            <h5 class="fw-bold text-dark mb-1">Street Light QR Identified!</h5>
+            <p class="small text-muted mb-2" id="scanResultText">Opening complaint form...</p>
+            <a id="scanRedirectBtn" href="#" class="btn btn-success w-100 fw-semibold">
+                Proceed to Fault Registration Form &rarr;
             </a>
         </div>
 
@@ -145,16 +171,16 @@
         <div class="p-3 bg-white rounded-3 border text-start">
             <h6 class="fw-bold text-dark mb-2"><i class="bi bi-info-circle-fill text-primary me-1"></i>How It Works</h6>
             <ol class="small text-muted mb-0 ps-3">
-                <li class="mb-1">Find the yellow QR sticker mounted at eye level on the light pole.</li>
-                <li class="mb-1">Aim your camera at the QR code — it will scan automatically.</li>
-                <li>Your pole ID &amp; GPS coordinates will be auto-filled so repair teams find the exact location immediately!</li>
+                <li class="mb-1">Locate the yellow QR code plate mounted on the street light pole.</li>
+                <li class="mb-1">Aim your camera at the QR code — it scans automatically in real time.</li>
+                <li>The pole code and GPS location are pre-filled so field technicians know exactly where to go!</li>
             </ol>
         </div>
 
         <!-- Tracking Existing Ticket Link -->
         <div class="text-center mt-3">
             <a href="{{ url_for('complaint.lookup') }}" class="text-decoration-none small text-muted">
-                <i class="bi bi-search me-1"></i> Already reported? Track your complaint status here &rarr;
+                <i class="bi bi-search me-1"></i> Already reported? Track your repair status here &rarr;
             </a>
         </div>
     </div>
@@ -162,14 +188,16 @@
 
 <script>
 let html5QrCode = null;
+let currentCameraId = null;
 
 function extractPoleCode(decodedText) {
-    // If the QR text is a full URL: http://host/complaint/report/SL-203
+    if (!decodedText) return "SL-203";
+    // Check if URL: .../complaint/report/SL-203
     if (decodedText.includes("/complaint/report/")) {
         const parts = decodedText.split("/complaint/report/");
-        return parts[parts.length - 1].split("?")[0].trim().toUpperCase();
+        return parts[parts.length - 1].split("?")[0].replace("/", "").trim().toUpperCase();
     }
-    // If it's directly a pole code like SL-203
+    // Match SL-xxx pattern
     const match = decodedText.match(/SL-\d{3}/i);
     if (match) {
         return match[0].toUpperCase();
@@ -181,7 +209,7 @@ function handleSuccessfulScan(decodedText) {
     const poleCode = extractPoleCode(decodedText);
     const targetUrl = `/complaint/report/${poleCode}`;
 
-    // Play subtle audio beep if supported
+    // Audio feedback
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
@@ -191,11 +219,12 @@ function handleSuccessfulScan(decodedText) {
         osc.stop(ctx.currentTime + 0.15);
     } catch (e) {}
 
-    // Update UI
+    // Show result card
     document.getElementById("scanResultCard").classList.remove("d-none");
-    document.getElementById("scanResultText").innerText = `Identified Pole: ${poleCode}`;
+    document.getElementById("scanResultText").innerText = `Identified Pole Code: ${poleCode}`;
     document.getElementById("scanRedirectBtn").href = targetUrl;
 
+    // Stop scanner and redirect
     if (html5QrCode) {
         html5QrCode.stop().then(() => {
             window.location.href = targetUrl;
@@ -207,66 +236,174 @@ function handleSuccessfulScan(decodedText) {
     }
 }
 
+function showCameraError(err) {
+    const errorBox = document.getElementById("cameraErrorBox");
+    const errorMsg = document.getElementById("cameraErrorMessage");
+    const statusDiv = document.getElementById("scanStatus");
+    const startBtn = document.getElementById("startScanBtn");
+    const stopBtn = document.getElementById("stopScanBtn");
+
+    statusDiv.classList.add("d-none");
+    startBtn.classList.remove("d-none");
+    stopBtn.classList.add("d-none");
+    errorBox.classList.remove("d-none");
+
+    const errStr = (err && err.message) ? err.message : String(err);
+    if (errStr.includes("NotAllowedError") || errStr.includes("Permission")) {
+        errorMsg.innerText = "Camera permission was denied. Please click the camera/lock icon in your browser address bar to allow access, then click 'Open Camera' again.";
+    } else if (errStr.includes("NotFoundError") || errStr.includes("DevicesNotFoundError")) {
+        errorMsg.innerText = "No camera was detected on this device. Please connect a webcam or use the 'Snap / Upload' tab.";
+    } else if (errStr.includes("NotSupportedError") || !navigator.mediaDevices) {
+        errorMsg.innerText = "Your browser does not allow live video on an unencrypted HTTP network. Please use 'Snap / Upload' tab or open via https / localhost.";
+    } else {
+        errorMsg.innerText = errStr;
+    }
+}
+
+function switchToUploadTab() {
+    const uploadTabBtn = document.getElementById("upload-tab");
+    if (uploadTabBtn) {
+        bootstrap.Tab.getOrCreateInstance(uploadTabBtn).show();
+    }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     const startBtn = document.getElementById("startScanBtn");
     const stopBtn = document.getElementById("stopScanBtn");
     const statusDiv = document.getElementById("scanStatus");
+    const errorBox = document.getElementById("cameraErrorBox");
     const qrRegion = "qr-reader";
+    const placeholder = document.getElementById("cameraPlaceholder");
+    const cameraSelect = document.getElementById("cameraSelect");
+    const cameraSelectDiv = document.getElementById("cameraSelectDiv");
+
+    // Check for Secure Context (HTTPS or localhost)
+    const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    const isSecure = window.isSecureContext || isLocalhost;
+    if (!isSecure) {
+        document.getElementById("securityAdvisory").classList.remove("d-none");
+    }
 
     startBtn.addEventListener("click", function () {
-        html5QrCode = new Html5Qrcode(qrRegion);
+        errorBox.classList.add("d-none");
         statusDiv.classList.remove("d-none");
-        startBtn.classList.add("d-none");
-        stopBtn.classList.remove("d-none");
+        document.getElementById("scanStatusText").innerText = "Requesting camera access...";
 
-        // Prefer rear camera (facingMode: environment)
-        html5QrCode.start(
-            { facingMode: "environment" },
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode(qrRegion);
+        }
+
+        // 1. Enumerate all available cameras first (works on laptops & phones)
+        Html5Qrcode.getCameras().then(devices => {
+            if (!devices || devices.length === 0) {
+                throw new Error("No cameras found on this device.");
+            }
+
+            // Populate selector if multiple cameras
+            if (devices.length > 1) {
+                cameraSelectDiv.classList.remove("d-none");
+                cameraSelect.innerHTML = "";
+                devices.forEach((dev, idx) => {
+                    const opt = document.createElement("option");
+                    opt.value = dev.id;
+                    opt.text = dev.label || `Camera ${idx + 1}`;
+                    cameraSelect.appendChild(opt);
+                });
+            }
+
+            // Pick back/rear camera if available, else first camera
+            let chosenId = devices[0].id;
+            for (const d of devices) {
+                const lbl = (d.label || "").toLowerCase();
+                if (lbl.includes("back") || lbl.includes("rear") || lbl.includes("environment")) {
+                    chosenId = d.id;
+                    break;
+                }
+            }
+            currentCameraId = chosenId;
+            if (cameraSelect) cameraSelect.value = chosenId;
+
+            return startWithCameraId(chosenId);
+        }).catch(err => {
+            // Fallback attempt: request standard facingMode constraints without device ID
+            console.warn("Camera enumeration failed, trying direct facingMode fallback:", err);
+            html5QrCode.start(
+                { facingMode: "user" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (text) => handleSuccessfulScan(text),
+                (e) => {}
+            ).then(() => {
+                onCameraStarted();
+            }).catch(fallbackErr => {
+                showCameraError(err || fallbackErr);
+            });
+        });
+    });
+
+    function startWithCameraId(cameraId) {
+        return html5QrCode.start(
+            cameraId,
             {
                 fps: 10,
                 qrbox: { width: 250, height: 250 }
             },
-            (decodedText, decodedResult) => {
-                handleSuccessfulScan(decodedText);
-            },
-            (errorMessage) => {
-                // scanning frame error (ignore continuous scan ticks)
-            }
-        ).catch(err => {
-            statusDiv.classList.add("d-none");
-            startBtn.classList.remove("d-none");
-            stopBtn.classList.add("d-none");
-            alert("Camera access was blocked or is not supported. You can use the 'Upload Image' or 'Enter Code' tabs instead!");
+            (decodedText) => handleSuccessfulScan(decodedText),
+            (errorMessage) => {}
+        ).then(() => {
+            onCameraStarted();
+        }).catch(err => {
+            showCameraError(err);
         });
-    });
+    }
+
+    function onCameraStarted() {
+        if (placeholder) placeholder.classList.add("d-none");
+        statusDiv.classList.remove("d-none");
+        document.getElementById("scanStatusText").innerText = "Align the QR code within the frame to scan...";
+        startBtn.classList.add("d-none");
+        stopBtn.classList.remove("d-none");
+    }
 
     stopBtn.addEventListener("click", function () {
-        if (html5QrCode) {
+        if (html5QrCode && html5QrCode.isScanning) {
             html5QrCode.stop().then(() => {
                 statusDiv.classList.add("d-none");
                 startBtn.classList.remove("d-none");
                 stopBtn.classList.add("d-none");
-            });
+                if (placeholder) placeholder.classList.remove("d-none");
+            }).catch(err => console.error(err));
         }
     });
 
-    // File upload scanner
+    // Camera switch dropdown change
+    if (cameraSelect) {
+        cameraSelect.addEventListener("change", function () {
+            const newId = this.value;
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    startWithCameraId(newId);
+                });
+            }
+        });
+    }
+
+    // Tab 2: File / Snapshot Scanner
     const fileInput = document.getElementById("qrFileInput");
     if (fileInput) {
         fileInput.addEventListener("change", function (e) {
             if (e.target.files.length === 0) return;
             const file = e.target.files[0];
             const feedback = document.getElementById("fileScanFeedback");
-            feedback.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Scanning photo...`;
+            feedback.innerHTML = `<span class="spinner-border spinner-border-sm text-primary"></span> Scanning photo for QR code...`;
 
             const fileScanner = new Html5Qrcode("qr-reader");
             fileScanner.scanFile(file, true)
                 .then(decodedText => {
-                    feedback.innerText = "Found QR code!";
+                    feedback.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-check-circle"></i> QR Code detected!</span>`;
                     handleSuccessfulScan(decodedText);
                 })
                 .catch(err => {
-                    feedback.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle"></i> No QR code found in this photo. Try another image or enter code manually.</span>`;
+                    feedback.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle"></i> No QR code found in this photo. Try snapping closer or use the 'Enter Code' tab.</span>`;
                 });
         });
     }
