@@ -52,6 +52,12 @@ def create_app(config_class=Config):
     def home():
         return render_template("index.html")
 
+    @app.route("/scan")
+    @app.route("/citizen")
+    def citizen_shortcut():
+        from flask import redirect, url_for
+        return redirect(url_for("complaint.citizen_portal"))
+
     # Friendly, safe error handlers (no sensitive stack traces exposed)
     @app.errorhandler(400)
     def bad_request(error):

@@ -16,14 +16,17 @@
                     <strong>Citizen QR reporting</strong> for individual bulb burnouts and physical hazards.
                 </p>
                 <div class="d-flex flex-wrap gap-2">
-                    <a href="{{ url_for('complaint.new_complaint', pole_code='SL-203') }}" class="btn btn-warning px-4 py-2 fw-semibold">
-                        <i class="bi bi-qr-code me-1"></i> Scan Pole SL-203 (Demo)
+                    <a href="{{ url_for('complaint.citizen_portal') }}" class="btn btn-warning px-4 py-2 fw-bold shadow-sm">
+                        <i class="bi bi-camera-fill me-1"></i> Citizen QR Scanner Portal
                     </a>
-                    <a href="{{ url_for('simulator.view') }}" class="btn btn-outline-dark px-4 py-2">
-                        <i class="bi bi-cpu me-1"></i> Launch Feeder Simulator
+                    <a href="{{ url_for('complaint.new_complaint', pole_code='SL-203') }}" class="btn btn-outline-dark px-3 py-2 fw-semibold">
+                        <i class="bi bi-qr-code me-1"></i> Direct Form (SL-203)
                     </a>
-                    <a href="{{ url_for('dashboard.view') }}" class="btn btn-primary px-4 py-2">
-                        <i class="bi bi-speedometer2 me-1"></i> Open Dashboard
+                    <a href="{{ url_for('simulator.view') }}" class="btn btn-outline-danger px-3 py-2">
+                        <i class="bi bi-cpu me-1"></i> Feeder Simulator
+                    </a>
+                    <a href="{{ url_for('dashboard.view') }}" class="btn btn-primary px-3 py-2">
+                        <i class="bi bi-speedometer2 me-1"></i> Dashboard
                     </a>
                 </div>
             </div>

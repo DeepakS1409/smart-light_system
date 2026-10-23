@@ -24,6 +24,8 @@ def test_all_critical_pages_accessible(client):
         ("/dashboard/reports", 200, b"Municipal Analytics"),
         ("/dashboard/reports/export-csv", 200, b"Reference No"),
         ("/dashboard/route-optimizer", 200, b"Multi-Stop Field Dispatch Route Planner"),
+        ("/complaint/citizen", 200, b"Scan Street Light QR Code"),
+        ("/scan", 302, b""),
         ("/auth/login", 200, b"Staff Portal Login"),
         ("/non-existent-page-404", 404, b"Page Not Found")
     ]

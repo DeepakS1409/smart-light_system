@@ -6,6 +6,11 @@ from pathlib import Path
 
 complaint_bp = Blueprint("complaint", __name__, url_prefix="/complaint")
 
+@complaint_bp.route("/citizen", methods=["GET"])
+def citizen_portal():
+    sample_poles = query_db("SELECT pole_code, landmark, zone FROM poles LIMIT 4")
+    return render_template("citizen_portal.html", sample_poles=sample_poles)
+
 @complaint_bp.route("/report/<pole_code>", methods=["GET", "POST"])
 def new_complaint(pole_code="SL-203"):
     pole = query_db("SELECT * FROM poles WHERE pole_code = ?", (pole_code,), one=True)
