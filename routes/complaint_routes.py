@@ -72,18 +72,23 @@ def get_qr(pole_code):
     if not pole:
         return "Pole not found", 404
 
-    qr_path = Config.QR_FOLDER / f"{pole_code}.png"
-    if not qr_path.exists():
-        generate_pole_qr(pole_code)
+    import io
+    import qrcode
+    # Dynamically resolve public host URL (e.g. https://your-app.vercel.app or http://127.0.0.1:5000)
+    base_url = request.host_url.rstrip("/")
+    report_url = f"{base_url}/complaint/report/{pole_code}"
 
-    return send_file(str(qr_path), mimetype="image/png")
+    qr = qrcode.QRCode(version=1, box_size=8, border=3)
+    qr.add_data(report_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return send_file(buf, mimetype="image/png")
 
 @complaint_bp.route("/qr-directory")
 def qr_directory():
     poles = query_db("SELECT * FROM poles ORDER BY pole_code ASC")
-    # Ensure all QRs are generated
-    for p in poles:
-        qr_file = Config.QR_FOLDER / f"{p['pole_code']}.png"
-        if not qr_file.exists():
-            generate_pole_qr(p["pole_code"])
-    return render_template("qr_directory.html", poles=poles, base_url=Config.APP_BASE_URL)
+    return render_template("qr_directory.html", poles=poles, base_url=request.host_url.rstrip("/"))

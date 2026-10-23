@@ -13,12 +13,17 @@ class Config:
     PORT = int(os.getenv("PORT", 5000))
     APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:5000")
 
-    # Database
-    DATABASE_PATH = BASE_DIR / os.getenv("DATABASE_PATH", "data/streetlights.db")
+    # Database & Storage (In Vercel serverless environment, only /tmp is writable)
+    IS_VERCEL = os.getenv("VERCEL") == "1" or os.getenv("NOW_REGION") is not None
+    if IS_VERCEL:
+        DATABASE_PATH = Path("/tmp/streetlights.db")
+        UPLOAD_FOLDER = Path("/tmp/uploads")
+        QR_FOLDER = Path("/tmp/qr_codes")
+    else:
+        DATABASE_PATH = BASE_DIR / os.getenv("DATABASE_PATH", "data/streetlights.db")
+        UPLOAD_FOLDER = BASE_DIR / "static" / "uploads"
+        QR_FOLDER = BASE_DIR / "static" / "qr_codes"
 
-    # Uploads & Media
-    UPLOAD_FOLDER = BASE_DIR / "static" / "uploads"
-    QR_FOLDER = BASE_DIR / "static" / "qr_codes"
     ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB max photo upload
 
